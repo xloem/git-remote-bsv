@@ -19,7 +19,7 @@ if (process.argv.length < 3) {
 }
 
 const GIT_DIR = path.resolve(process.env.GIT_DIR)
-const FETCH_SITE = 'https://bico.media/'
+const FETCH_SITE = 'https::bico.media/' // inform git the server is dumb by using https:: instead of https://
 const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
 
 const remotename = process.argv[3] ? process.argv[2] : undefined
