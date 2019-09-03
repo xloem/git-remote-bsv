@@ -154,13 +154,18 @@ async function upload()
   try {
     await new Promise((resolve, reject) => {
       const rl = readline.createInterface({input: bsvup.stdout})
+      var success = true
       rl.on('line', (line) => {
         process.stderr.write(line + '\n')
         if (line.match('Total .* TX')) {
           bsvup.stdin.write('Y\n')
+        } else if (line.match('still need .* satoshis')) {
+          success = false
+          process.stderr.write('Send to ' + addr + '\n')
+          rl.close()
         }
       })
-      rl.on('close', resolve)
+      rl.on('close', ()=>success?resolve():reject())
     })
     // success
     rimraf.sync(mirror_path)
