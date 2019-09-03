@@ -1,0 +1,168 @@
+#!/usr/bin/env node
+
+const child_process = require('child_process')
+const path = require('path')
+const readline = require('readline')
+const fs = require('fs')
+
+const bsv = require('bsv')
+//const git = require('nodegit')
+const rimraf = require('rimraf')
+
+const FETCH_SITE = 'https://bico.media/'
+
+const GIT_DIR = path.resolve(process.env.GIT_DIR)
+const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
+
+var url = process.argv[3] || process.argv[2]
+url = url.replace('bsv://','')
+url = url.replace('https://','')
+url = url.replace('http://','')
+url = url.replace('bico.media/','')
+
+// interesting approach: rather than feeding bsvup its input, I could ask the user
+
+const urlparts = url.split('/')
+var addr = urlparts[0]
+var privkey = undefined
+if (bsv.PrivateKey.isValid(addr)) {
+  privkey = addr
+  addr = bsv.PrivateKey(privkey).toAddress().toString()
+  urlparts[0] = addr
+  url = urlparts.join('/')
+}
+
+const bsv_path = path.join(GIT_DIR, 'bsv', addr)
+const mirror_path = path.join(bsv_path, 'git')
+
+const lines = readline.createInterface({
+  input: process.stdin
+})
+
+lines.on('line', (line) => {
+  if (line === "capabilities") {
+    process.stdout.write('connect\n\n')
+  } else if (line.substr(0,8) === "connect ") {
+    const service = line.substr(8)
+    connect(service).catch(err => {
+      process.stderr.write(err + '\n')
+      process.exit(-1)
+    })
+  }
+})
+
+async function connect(service)
+{
+  if (service === 'git-upload-pack') {
+    download()
+  } else if (service === 'git-receive-pack') {
+    if (!privkey) {
+      process.stderr.write('Url not recognized as private key to upload to\n')
+      process.exit(-1)
+    }
+    if (! fs.existsSync(mirror_path)) {
+      try {
+        download()
+      } catch(e) {
+        const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null,2,2], env: {} })
+        if (res.status !== 0) process.exit(res.status)
+      }
+    }
+    let bsvup = child_process.execFile(BSVUP, { cwd: bsv_path })
+    let rebroadcast = await new Promise((resolve, reject) => {
+      const rl = readline.createInterface({input: bsvup.stdout})
+      let rebroadcast = false
+      rl.on('line', (line) => {
+        if (line.match('Unbroadcasted TX(s) found, continue broadcasting?')) {
+          process.stderr.write(line + '\n')
+          rebroadcast = true
+          bsvup.stdin.write('Y\n')
+          rl.close()
+        }
+      })
+      rl.on('close', () => {
+        bsvup.stdout.pipe(process.stderr)
+        bsvup.on('exit', () => resolve(rebroadcast))
+      })
+    })
+    if (rebroadcast) download()
+  } else {
+    process.stderr.write('Unsupported service: ' + service + '\n')
+    process.exit(-1)
+  }
+  process.stdout.write('\n')
+  const res = child_process.spawnSync(service, [mirror_path], { stdio: 'inherit', cwd: mirror_path })
+  if (res.status !== 0) process.exit(res.status)
+  if (service === 'git-receive-pack') {
+    upload()
+  }
+}
+
+function download()
+{
+  const fetchurl = FETCH_SITE + url
+  var res
+  if (! fs.existsSync(mirror_path))
+  {
+    fs.mkdirSync(mirror_path, {recursive: true})
+    res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null,2,2], env: {} })
+  } else {
+    res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null,2,2], env: {GIT_DIR: mirror_path} })
+  }
+  if (res.status !== 0) throw new Error("Failed to fetch")
+}
+
+async function upload()
+{
+  const new_path = mirror_path + '.new'
+  child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, new_path], {stdio:[null,2,2],env:{}})
+  child_process.spawnSync('git', ['repack'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
+  child_process.spawnSync('git', ['prune-packed'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
+  if (! fs.existsSync( path.join(bsv_path, '.bsv', 'key') ) ) {
+    let bsvupaddr;
+    let bsvup = child_process.execFile(BSVUP, ['init'], { cwd: bsv_path })
+    bsvup.stdin.write(privkey + '\n')
+    bsvupaddr = await new Promise((resolve, reject) => {
+      const rl = readline.createInterface({input: bsvup.stdout})
+      let foundaddr = undefined
+      rl.on('line', (line) => {
+        let m = line.match('onchain address：\(.*\)')
+        if (m) {
+          process.stderr.write(line + '\n')
+          foundaddr = m[1]
+          rl.close()
+        }
+      })
+      rl.on('close', () => { if (foundaddr) resolve(foundaddr); else reject('bsvup did not give addr'); })
+    })
+    bsvup.stdin.write('Y\n')
+    await new Promise((resolve, reject) => {
+      bsvup.on('error', reject)
+      bsvup.on('exit', resolve)
+      bsvup.stdout.pipe(process.stderr)
+    })
+    if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
+  }
+  let bsvup = child_process.execFile(BSVUP, ['upload', '-f', new_path], { cwd: bsv_path })
+  bsvup.stdin.write('Y\n')
+  try {
+    await new Promise((resolve, reject) => {
+      const rl = readline.createInterface({input: bsvup.stdout})
+      rl.on('line', (line) => {
+        process.stderr.write(line + '\n')
+        if (line.match('Total .* TX')) {
+          bsvup.stdin.write('Y\n')
+        }
+      })
+      rl.on('close', resolve)
+    })
+    // success
+    rimraf.sync(mirror_path)
+    fs.renameSync(new_path, mirror_path)
+  } catch(e) {
+    // failure
+    process.stderr.write(e + '\n')
+    rimraf.sync(new_path)
+    process.exit(-1)
+  }
+}
