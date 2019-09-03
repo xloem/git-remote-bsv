@@ -8,9 +8,18 @@ const fs = require('fs')
 const bsv = require('bsv')
 const rimraf = require('rimraf')
 
-const FETCH_SITE = 'https://bico.media/'
+if (process.argv.length < 3) {
+  process.stderr.write('\n')
+  process.stderr.write('Here\'s a new url pair for you.  Remember to send coins to the pull address.\n')
+  let key = bsv.PrivateKey()
+  process.stderr.write('    push: bsv://' + key.toString() + '\n')
+  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '\n')
+  process.stderr.write('\n')
+  process.exit(0);
+}
 
 const GIT_DIR = path.resolve(process.env.GIT_DIR)
+const FETCH_SITE = 'https://bico.media/'
 const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
 
 var url = process.argv[3] || process.argv[2]
