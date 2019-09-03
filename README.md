@@ -1,4 +1,4 @@
-# git-remote-bsv@1.0.3
+# git-remote-bsv
 
 A git remote for the Bitcoin Satoshi Vision blockchain.
 
