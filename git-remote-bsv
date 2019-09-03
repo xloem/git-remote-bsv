@@ -121,6 +121,9 @@ function download()
 async function upload()
 {
   const new_path = mirror_path + '.new'
+  if (fs.existsSync(new_path)) {
+    rimraf.sync(new_path)
+  }
   child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, new_path], {stdio:[null,2,2],env:{}})
   child_process.spawnSync('git', ['repack'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
   child_process.spawnSync('git', ['prune-packed'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
