@@ -88,7 +88,6 @@ async function connect(service)
       let rebroadcast = false
       rl.on('line', (line) => {
         if (line.match('发现未广播TX，是否继续广播？')) { // unbroadcasted transactions found
-          process.stderr.write(line + '\n')
           rebroadcast = true
           bsvup.stdin.write('Y\n')
           rl.close()
@@ -135,6 +134,7 @@ async function upload()
   child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, new_path], {stdio:[null,2,2],env:{}})
   child_process.spawnSync('git', ['repack'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
   child_process.spawnSync('git', ['prune-packed'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
+  child_process.spawnSync('git', ['update-server-info'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
   if (! fs.existsSync( path.join(bsv_path, '.bsv', 'key') ) ) {
     let bsvupaddr;
     let bsvup = child_process.execFile(BSVUP, ['init'], { cwd: bsv_path })
