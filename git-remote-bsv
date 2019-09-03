@@ -87,7 +87,7 @@ async function connect(service)
       const rl = readline.createInterface({input: bsvup.stdout})
       let rebroadcast = false
       rl.on('line', (line) => {
-        if (line.match('Unbroadcasted TX(s) found, continue broadcasting?')) {
+        if (line.match('发现未广播TX，是否继续广播？')) { // unbroadcasted transactions found
           process.stderr.write(line + '\n')
           rebroadcast = true
           bsvup.stdin.write('Y\n')

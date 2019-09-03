@@ -1,6 +1,6 @@
 {
   "name": "git-remote-bsv",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "bin": "git-remote-bsv",
   "description": "code-on-blockchain: intro handlers for bsv://pubkey and bsv://privkey git remote urls",
   "homepage": "https://github.com/xloem/git-remote-bsv",
