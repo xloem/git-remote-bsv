@@ -6,7 +6,6 @@ const readline = require('readline')
 const fs = require('fs')
 
 const bsv = require('bsv')
-//const git = require('nodegit')
 const rimraf = require('rimraf')
 
 const FETCH_SITE = 'https://bico.media/'
@@ -19,8 +18,6 @@ url = url.replace('bsv://','')
 url = url.replace('https://','')
 url = url.replace('http://','')
 url = url.replace('bico.media/','')
-
-// interesting approach: rather than feeding bsvup its input, I could ask the user
 
 const urlparts = url.split('/')
 var addr = urlparts[0]
