@@ -22,7 +22,9 @@ const GIT_DIR = path.resolve(process.env.GIT_DIR)
 const FETCH_SITE = 'https://bico.media/'
 const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
 
-var url = process.argv[3] || process.argv[2]
+const remotename = process.argv[3] ? process.argv[2] : undefined
+const origurl = remotename ? process.argv[3] : process.argv[2]
+var url = origurl
 url = url.replace('bsv://','')
 url = url.replace('https://','')
 url = url.replace('http://','')
@@ -36,6 +38,12 @@ if (bsv.PrivateKey.isValid(addr)) {
   addr = bsv.PrivateKey(privkey).toAddress().toString()
   urlparts[0] = addr
   url = urlparts.join('/')
+  if (remotename) {
+    if (child_process.spawnSync('git', ['config', '--get', 'remote.' + remotename + '.pushurl']).stdout.length == 0) {
+      child_process.spawnSync('git', ['remote', 'set-url', '--push', remotename, origurl])
+      child_process.spawnSync('git', ['remote', 'set-url', remotename, origurl.replace(privkey, addr)])
+    }
+  }
 }
 
 const bsv_path = path.join(GIT_DIR, 'bsv', addr)
