@@ -118,7 +118,7 @@ function download()
   if (! fs.existsSync(mirror_path))
   {
     fs.mkdirSync(mirror_path, {recursive: true})
-    res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null,2,2], env: {} })
+    res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null,2,2], env: {GIT_DIR: mirror_path} })
   } else {
     res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null,2,2], env: {GIT_DIR: mirror_path} })
   }
