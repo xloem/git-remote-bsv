@@ -20,7 +20,7 @@ Get a new pair of git remote urls:
 ```sh
 $ git-remote-bsv
 
-Here's a new url pair for you.  Remember to send coins to the pull address.
+Here is a new url pair for you.  Remember to send coins to the pull address.
     push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra
     pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
 

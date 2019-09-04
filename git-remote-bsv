@@ -10,7 +10,7 @@ const rimraf = require('rimraf')
 
 if (process.argv.length < 3) {
   process.stderr.write('\n')
-  process.stderr.write('Here\'s a new url pair for you.  Remember to send coins to the pull address.\n')
+  process.stderr.write('Here is a new url pair for you.  Remember to send coins to the pull address.\n')
   let key = bsv.PrivateKey()
   process.stderr.write('    push: bsv://' + key.toString() + '/path/to/repo.git\n')
   process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
