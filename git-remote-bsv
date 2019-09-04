@@ -12,8 +12,8 @@ if (process.argv.length < 3) {
   process.stderr.write('\n')
   process.stderr.write('Here\'s a new url pair for you.  Remember to send coins to the pull address.\n')
   let key = bsv.PrivateKey()
-  process.stderr.write('    push: bsv://' + key.toString() + '/whatever/you/want.git\n')
-  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/whatever/you/want.git\n')
+  process.stderr.write('    push: bsv://' + key.toString() + '/path/to/repo.git\n')
+  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
   process.stderr.write('\n')
   process.exit(0);
 }
@@ -76,10 +76,10 @@ async function connect(service)
       process.stderr.write('Url not recognized as private key to upload to\n')
       process.exit(-1)
     }
-    if (! fs.existsSync(mirror_path)) {
-      try {
-        download()
-      } catch(e) {
+    try {
+      download()
+    } catch(e) {
+      if (! fs.existsSync(mirror_path)) {
         const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null,2,2], env: {} })
         if (res.status !== 0) process.exit(res.status)
       }
