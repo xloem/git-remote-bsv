@@ -12,8 +12,8 @@ if (process.argv.length < 3) {
   process.stderr.write('\n')
   process.stderr.write('Here\'s a new url pair for you.  Remember to send coins to the pull address.\n')
   let key = bsv.PrivateKey()
-  process.stderr.write('    push: bsv://' + key.toString() + '\n')
-  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '\n')
+  process.stderr.write('    push: bsv://' + key.toString() + '/whatever/you/want.git\n')
+  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/whatever/you/want.git\n')
   process.stderr.write('\n')
   process.exit(0);
 }
@@ -31,6 +31,7 @@ url = url.replace('http://','')
 url = url.replace('bico.media/','')
 
 const urlparts = url.split('/')
+const subkey = urlparts.slice(1).join('/')
 var addr = urlparts[0]
 var privkey = undefined
 if (bsv.PrivateKey.isValid(addr)) {
@@ -47,7 +48,8 @@ if (bsv.PrivateKey.isValid(addr)) {
 }
 
 const bsv_path = path.join(GIT_DIR, 'bsv', addr)
-const mirror_path = path.join(bsv_path, 'git')
+const mirror_path = path.join(bsv_path, 'git', urlparts.join(path.sep))
+const mirror_path_new = path.join(bsv_path, 'git.new')
 
 const lines = readline.createInterface({
   input: process.stdin
@@ -127,14 +129,13 @@ function download()
 
 async function upload()
 {
-  const new_path = mirror_path + '.new'
-  if (fs.existsSync(new_path)) {
-    rimraf.sync(new_path)
+  if (fs.existsSync(mirror_path_new)) {
+    rimraf.sync(mirror_path_new)
   }
-  child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, new_path], {stdio:[null,2,2],env:{}})
-  child_process.spawnSync('git', ['repack'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
-  child_process.spawnSync('git', ['prune-packed'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
-  child_process.spawnSync('git', ['update-server-info'], { cwd: new_path, stdio: [null,2,2], env: {GIT_DIR: new_path} })
+  child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], {stdio:[null,2,2],env:{}})
+  child_process.spawnSync('git', ['repack'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
+  child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
+  child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
   if (! fs.existsSync( path.join(bsv_path, '.bsv', 'key') ) ) {
     let bsvupaddr;
     let bsvup = child_process.execFile(BSVUP, ['init'], { cwd: bsv_path })
@@ -160,7 +161,7 @@ async function upload()
     })
     if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
   }
-  let bsvup = child_process.execFile(BSVUP, ['upload', '-f', new_path], { cwd: bsv_path })
+  let bsvup = child_process.execFile(BSVUP, ['upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
   bsvup.stdin.write('Y\n')
   try {
     await new Promise((resolve, reject) => {
@@ -180,11 +181,11 @@ async function upload()
     })
     // success
     rimraf.sync(mirror_path)
-    fs.renameSync(new_path, mirror_path)
+    fs.renameSync(mirror_path_new, mirror_path)
   } catch(e) {
     // failure
     process.stderr.write(e + '\n')
-    rimraf.sync(new_path)
+    rimraf.sync(mirror_path_new)
     process.exit(-1)
   }
 }
