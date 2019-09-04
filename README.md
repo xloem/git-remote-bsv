@@ -21,8 +21,8 @@ Get a new pair of git remote urls:
 $ git-remote-bsv
 
 Here is a new url pair for you.  Remember to send coins to the pull address.
-    push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra
-    pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
+    push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
+    pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
 
 ```
 

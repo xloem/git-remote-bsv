@@ -48,7 +48,7 @@ if (bsv.PrivateKey.isValid(addr)) {
 }
 
 const bsv_path = path.join(GIT_DIR, 'bsv', addr)
-const mirror_path = path.join(bsv_path, 'git', urlparts.join(path.sep))
+const mirror_path = path.join(bsv_path, 'git', urlparts.slice(1).join(path.sep))
 const mirror_path_new = path.join(bsv_path, 'git.new')
 
 const lines = readline.createInterface({
