@@ -12,8 +12,8 @@ if (process.argv.length < 3) {
   process.stderr.write('\n')
   process.stderr.write('Here is a new url pair for you.  Remember to send coins to the pull address.\n')
   let key = bsv.PrivateKey()
-  process.stderr.write('    push: bsv://' + key.toString() + '/path/to/repo.git\n')
-  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
+  process.stderr.write('    push: bsv://' + key.toString())
+  process.stderr.write('    pull: bsv://' + key.toAddress().toString())
   process.stderr.write('\n')
   process.exit(0);
 }
@@ -32,6 +32,10 @@ url = url.replace('bico.media/','')
 
 const urlparts = url.split('/')
 const subkey = urlparts.slice(1).join('/')
+if (subkey.length){
+  process.stderr.write("Subdirectories currently unimplemented while I learn relevent inter-package maintainance.\n")
+  process.exit(-1)
+}
 var addr = urlparts[0]
 var privkey = undefined
 if (bsv.PrivateKey.isValid(addr)) {
@@ -161,7 +165,7 @@ async function upload()
     })
     if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
   }
-  let bsvup = child_process.execFile(BSVUP, ['upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
+  let bsvup = child_process.execFile(BSVUP, ['upload', /*'-s', subkey,*/ '-f', mirror_path_new], { cwd: bsv_path })
   bsvup.stdin.write('Y\n')
   try {
     await new Promise((resolve, reject) => {
