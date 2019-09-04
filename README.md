@@ -88,7 +88,8 @@ require investigation to find and undo, but would be very obvious when searched 
 
 The solution to the history rewriting problem is to advance beyond the D:// protocol
 of bsvup and bico.media, to something simpler that retains the concept of an append-only
-log.
+log.  Integrating the protocol into the client could also provide for the client to
+ignore or undo history rewrites automatically.
 
 ## License
 [Public Domain]()
