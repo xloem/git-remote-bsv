@@ -19,8 +19,9 @@ if (process.argv.length < 3) {
 }
 
 const GIT_DIR = path.resolve(process.env.GIT_DIR)
-const FETCH_SITE = 'https::bico.media/' // inform git the server is dumb by using https:: instead of https://
 const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
+var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://','::') // '::' instead of '://' informs git the server has no git cgi
+if (FETCH_SITE.slice(-1) != '/') FETCH_SITE += '/'
 
 const remotename = process.argv[3] ? process.argv[2] : undefined
 const origurl = remotename ? process.argv[3] : process.argv[2]
