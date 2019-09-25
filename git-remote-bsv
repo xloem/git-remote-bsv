@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const child_process = require('child_process')
+const crypto = require('crypto')
+const glob = require('glob')
 const path = require('path')
 const readline = require('readline')
 const fs = require('fs')
@@ -48,8 +50,10 @@ if (bsv.PrivateKey.isValid(addr)) {
   }
 }
 
+const hash = crypto.createHash('sha256')
 const bsv_path = path.join(GIT_DIR, 'bsv', addr)
-const mirror_path = path.join(bsv_path, 'git', urlparts.slice(1).join(path.sep))
+const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
+const mirror_path = path.join(bsv_path, 'git.' + hash.update(urlparts.join(path.sep)).digest('hex'))
 const mirror_path_new = path.join(bsv_path, 'git.new')
 
 const lines = readline.createInterface({
@@ -83,6 +87,20 @@ async function connect(service)
       if (! fs.existsSync(mirror_path)) {
         const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null,2,2], env: {} })
         if (res.status !== 0) process.exit(res.status)
+        await new Promise((resolve, reject) => {
+          glob(path.join(fork_glob, 'objects', 'pack', '*'), function (er, files) {
+            if (er !== null) {
+              sys.stderr.write(er + '\n')
+              process.exit(-1)
+            }
+            for (let file of files) {
+              try {
+                fs.copyFileSync(file, path.join(mirror_path, 'objects', 'pack', path.basename(file)), fs.constants.COPYFILE_EXCL)
+              } catch(e) {}
+            }
+            resolve()
+          })
+        })
       }
     }
   } else {
