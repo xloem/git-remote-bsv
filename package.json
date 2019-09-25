@@ -3,8 +3,8 @@
   "version": "1.2.1",
   "bin": "git-remote-bsv",
   "description": "code-on-blockchain: intro handlers for bsv://pubkey and bsv://privkey git remote urls",
-  "homepage": "https://github.com/xloem/git-remote-bsv",
-  "repository": "git+https://bico.media/1K15pHmxCNBBq5NhrZXG8E7xaEV62cizs6",
+  "homepage": "https://github.com/fuzzyTew/git-remote-bsv",
+  "repository": "git+https://bico.media/1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL",
   "main": "git-remote-bsv",
   "dependencies": {
     "bsvup": "^1.1.5",

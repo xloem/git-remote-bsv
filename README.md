@@ -75,6 +75,14 @@ The next advancement to `git-remote-bsv` should be to connect to a library with 
 API, rather than launching a subprocess and scraping its output.  This should significantly aid
 stability.
 
+## Recovering From Catastrophe
+
+The private push address for this repository is now
+
+  bsv://KzywA1GLJacYP7EBmAa4Pze2vKnTbYCdfcUkJUWuq8sLR6pHoT9h
+
+Please do not steal this particular money.
+
 ## Integrity Concerns
 
 Although the data is stored in a decentralized blockchain, the APIs currently reference
