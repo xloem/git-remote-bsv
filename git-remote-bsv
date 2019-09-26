@@ -111,8 +111,8 @@ async function connect(service)
   const res = child_process.spawnSync(service, [mirror_path], { stdio: 'inherit', cwd: mirror_path })
   if (res.status !== 0) process.exit(res.status)
   if (service === 'git-receive-pack') {
-    const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD']).stdout.toString().replace('\n','')
-    child_process.spawnSync('git', ['tag', url.replace(':','/').replace(/\/\/*/, '/'), first_commit])
+    const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path, env: {GIT_DIR: mirror_path} }).stdout.toString().replace('\n','')
+    child_process.spawnSync('git', ['tag', url.replace(':','/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path, env: {GIT_DIR: mirror_path} })
     upload()
   }
 }
