@@ -140,6 +140,7 @@ async function upload()
   const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: {GIT_DIR: mirror_path_new} }).stdout.toString().replace('\n','')
   child_process.spawnSync('git', ['tag', url.replace(':','/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: {GIT_DIR: mirror_path_new} })
   child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
+  fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), 'This is a git-remote-bsv D:// web repository.')
   if (! fs.existsSync( path.join(bsv_path, '.bsv', 'key') ) ) {
     let bsvupaddr;
     let bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
