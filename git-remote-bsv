@@ -112,7 +112,7 @@ async function connect(service)
   if (res.status !== 0) process.exit(res.status)
   if (service === 'git-receive-pack') {
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD']).stdout.toString().replace('\n','')
-    child_process.spawnSync('git', ['tag', url, first_commit])
+    child_process.spawnSync('git', ['tag', url.replace(':','/').replace(/\/\/*/, '/'), first_commit])
     upload()
   }
 }
