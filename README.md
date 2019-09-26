@@ -21,8 +21,8 @@ Get a new pair of git remote urls:
 $ git-remote-bsv
 
 Here is a new url pair for you.  Remember to send coins to the pull address.
-    push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra
-    pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
+    push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
+    pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
 
 ```
 
@@ -75,14 +75,6 @@ The next advancement to `git-remote-bsv` should be to connect to a library with 
 API, rather than launching a subprocess and scraping its output.  This should significantly aid
 stability.
 
-## Recovering From Catastrophe
-
-The private push address for this repository is now
-
-  bsv://KzywA1GLJacYP7EBmAa4Pze2vKnTbYCdfcUkJUWuq8sLR6pHoT9h
-
-Please do not steal this particular money.
-
 ## Integrity Concerns
 
 Although the data is stored in a decentralized blockchain, the APIs currently reference
@@ -98,6 +90,22 @@ The solution to the history rewriting problem is to advance beyond the D:// prot
 of bsvup and bico.media, to something simpler that retains the concept of an append-only
 log.  Integrating the protocol into the client could also provide for the client to
 ignore or undo history rewrites automatically.
+
+## Recovering From Catastrophe
+
+The original repo private key has been misplaced.  The original content is at:
+
+    bsv::1K15pHmxCNBBq5NhrZXG8E7xaEV62cizs6
+
+The new repo is at:
+
+    bsv::1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL/git-remote-bsv.git
+
+To deter future catastrophe, the new private push address is listed here:
+
+    bsv::KzywA1GLJacYP7EBmAa4Pze2vKnTbYCdfcUkJUWuq8sLR6pHoT9h
+
+Please do not steal this particular money.
 
 ## License
 [Public Domain]()
