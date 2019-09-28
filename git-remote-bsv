@@ -299,8 +299,12 @@ async function findReposWithFiles(sha256s, pathregexp)
   for (const fork of forks) {
     const descrurl = FETCH_SITE.replace('::','://') + fork + '/description'
     let descr = await fetch(descrurl)
-    descr = await descr.text()
-    descr = descr.replace(/\n.*$/,'')
+    if (descr.ok) {
+      descr = await descr.text()
+      descr = descr.replace(/\n.*$/,'')
+    } else {
+      descr = '<failed to fetch GIT_DIR/description>'
+    }
     console.log('bsv://' + fork + '\t' + descr)
   }
 }
