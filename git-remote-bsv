@@ -137,6 +137,7 @@ function remote () {
     child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
+    fs.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
     if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
       let bsvupaddr
       const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })

@@ -16,13 +16,14 @@ The private one is the private key to a BSV bitcoin account, and may upload chan
 The public one is the BSV bitcoin account address, and should be distributed to others.
 The account must have enough coins to upload new changes.
 
-Get a new pair of git remote urls:
+See help and get a new pair of git remote urls:
 ```sh
-$ git-remote-bsv
-
-Here is a new url pair for you.  Remember to send coins to the pull address.
-    push: bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
-    pull: bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
+$ git remote-bsv
+Usage (including a new url pair for you; send coins to fetch address):
+  git remote add --mirror=push bsv bsv://L28HP8pJKaqZrffoKcffKf9KHm8vJgHZXXokWYU3wJPNe66Egc8G/path/to/repo.git
+  git remote add --mirror=fetch bsv bsv://1DRp8jsVnHsNLBHWnyfzMqREap17836xK3/path/to/repo.git
+  git remote-bsv --forks       # list forks of this repo
+  git remote-bsv --repos       # list repos on blockchain
 
 ```
 
@@ -53,6 +54,18 @@ $ git remote add bsv bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
 
 # integrate
 $ git pull bsv master
+```
+
+Enumerate forks or repos on blockchain:
+```
+$ git remote-bsv --forks   # list fork urls
+bsv://1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL
+bsv://1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL/git-remote-bsv.git
+bsv://19HLLuvb6zfAp4w6tijmgLGLBYKjr2nH1c
+bsv://19HLLuvb6zfAp4w6tijmgLGLBYKjr2nH1c/git2
+bsv://1K15pHmxCNBBq5NhrZXG8E7xaEV62cizs6
+
+$ git remote-bsv --repos   # list git-remote-bsv repo urls
 ```
 
 ## How it Works
