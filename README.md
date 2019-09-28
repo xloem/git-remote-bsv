@@ -90,6 +90,11 @@ stability.
 
 ## Integrity Concerns
 
+The output of `--forks` and `--repos` uses the '.git/description' file to show the name of
+each repo.  This means changes to the name are not recorded in repository history, and if
+it is maliciously changed the evidence of it is unobvious.  This is true of force-pushes,
+too.
+
 Although the data is stored in a decentralized blockchain, the APIs currently reference
 centralized webservers by default.  This means for now, to evade real censorship, one must
 check via their own BSV client and other trustworthy means that the data they uploaded
