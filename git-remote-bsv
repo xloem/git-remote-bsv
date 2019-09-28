@@ -10,9 +10,11 @@ const fs = require('fs')
 const bsv = require('bsv')
 const rimraf = require('rimraf')
 
-const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
+var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
+if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
 const GIT_DIR = path.resolve(process.env.GIT_DIR || child_process.spawnSync('git', ['rev-parse', '--git-dir']).stdout.toString().replace('\n', ''))
 const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
+const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
 
 if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '--help') {
   const key = bsv.PrivateKey()
@@ -33,8 +35,6 @@ if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '
 
 function remote () {
   const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
-  var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
-  if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
 
   const remotename = process.argv[3] ? process.argv[2] : undefined
   const origurl = remotename ? process.argv[3] : process.argv[2]
@@ -217,11 +217,6 @@ async function findforks () {
   await findReposWithFiles(sha256s, /\/refs\/tags\/[^\/]*$|\/objects\/pack\/pack-[^\/]*$/)
 }
 
-// finding repos and finding forks are similar, but different files within the repos are keyed upon
-// for forks, we look for any packfiles that contain the root commit, and any tag that points to the root commit
-// for repos, we look for either the 'git-remote-bsv' distinguishing file content, the default 'description' file, or a default hook file (probably 'post-update.sample', the smallest)
-// so, we have a list of contents, and a list of replacements to apply to adjust the paths properly.
-
 async function findrepos()
 {
   const sha256s = {}
@@ -295,13 +290,17 @@ async function findReposWithFiles(sha256s, pathregexp)
     // console.log(res)
     // for each path, remove either refs/tags/.*?^ or objects/pack/pack-.*?^
     res = res.map(x =>
-      ('bsv://' + x.addr + '/' + x.key)
+      (x.addr + '/' + x.key)
         .replace(pathregexp, '')
     )
     forks = new Set(res.concat(...forks))
   }
   for (const fork of forks) {
-    console.log(fork)
+    const descrurl = FETCH_SITE.replace('::','://') + fork + '/description'
+    let descr = await fetch(descrurl)
+    descr = await descr.text()
+    descr = descr.replace(/\n.*$/,'')
+    console.log('bsv://' + fork + '\t' + descr)
   }
 }
 
