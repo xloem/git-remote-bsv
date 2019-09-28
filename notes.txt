@@ -1,0 +1,8 @@
+  //   genesis explorer is at https://genesis.bitdb.network/query/1FnauZ9aUH2Bex6JzdcV4eNX7oLSSEbxtN
+  //   ref is at https://docs.bitdb.network/docs/query_v3
+  //     bsvup D urls appear to reference B trasnactions
+  //     C docs: https://c.bitdb.network/
+  //     all proto docs: https://planaria.network/
+  //     the B address is the transaction hash (.tx.h)
+  //     C can be looked up with e.g.  "q": { "find": { "c": "25b4e4aea4e1d7be198a9853984ec2156d95d6db735966b4ca34f6e544b8fbad" } }
+  //      the hash is sha256

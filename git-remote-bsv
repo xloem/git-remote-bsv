@@ -10,183 +10,276 @@ const fs = require('fs')
 const bsv = require('bsv')
 const rimraf = require('rimraf')
 
-if (process.argv.length < 3) {
-  process.stderr.write('\n')
-  process.stderr.write('Here is a new url pair for you.  Remember to send coins to the pull address.\n')
-  let key = bsv.PrivateKey()
-  process.stderr.write('    push: bsv://' + key.toString() + '/path/to/repo.git\n')
-  process.stderr.write('    pull: bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
-  process.stderr.write('\n')
-  process.exit(0);
-}
-
-const GIT_DIR = path.resolve(process.env.GIT_DIR)
-const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
-var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://','::') // '::' instead of '://' informs git the server has no git cgi
-if (FETCH_SITE.slice(-1) != '/') FETCH_SITE += '/'
-
-const remotename = process.argv[3] ? process.argv[2] : undefined
-const origurl = remotename ? process.argv[3] : process.argv[2]
-var url = origurl
-url = url.replace('bsv://','')
-url = url.replace('https://','')
-url = url.replace('http://','')
-url = url.replace('bico.media/','')
-
-const urlparts = url.split('/')
-const subkey = urlparts.slice(1).join('/')
-var addr = urlparts[0]
-var privkey = undefined
-if (bsv.PrivateKey.isValid(addr)) {
-  privkey = addr
-  addr = bsv.PrivateKey(privkey).toAddress().toString()
-  urlparts[0] = addr
-  url = urlparts.join('/')
-  if (remotename) {
-    if (child_process.spawnSync('git', ['config', '--get', 'remote.' + remotename + '.pushurl']).stdout.length == 0) {
-      child_process.spawnSync('git', ['remote', 'set-url', '--push', remotename, origurl])
-      child_process.spawnSync('git', ['remote', 'set-url', remotename, origurl.replace(privkey, addr)])
-    }
-  }
-}
-
-const hash = crypto.createHash('sha256')
-const bsv_path = path.join(GIT_DIR, 'bsv', addr)
+const GIT_DIR = path.resolve(process.env.GIT_DIR || child_process.spawnSync('git', ['rev-parse', '--git-dir']).stdout.toString().replace('\n', ''))
 const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
-const mirror_path = path.join(bsv_path, 'git.' + hash.update(urlparts.join(path.sep)).digest('hex'))
-const mirror_path_new = path.join(bsv_path, 'git.new')
 
-const lines = readline.createInterface({
-  input: process.stdin
-})
+if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '--help') {
+  const key = bsv.PrivateKey()
+  process.stderr.write('Usage (including a new url pair for you; send coins to fetch address):\n')
+  process.stderr.write('  git remote add --mirror=push bsv bsv://' + key.toString() + '/path/to/repo.git\n')
+  process.stderr.write('  git remote add --mirror=fetch bsv bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
+  process.stderr.write('  git remote-bsv --forks       # list forks of a repo\n')
+  process.stderr.write('\n')
+  process.exit(0)
+} else if (process.argv.length === 3 && (process.argv[2] === '-f' || process.argv[2] === '--forks')) {
+  findforks()
+} else {
+  remote()
+}
 
-lines.on('line', (line) => {
-  if (line === "capabilities") {
-    process.stdout.write('connect\n\n')
-  } else if (line.substr(0,8) === "connect ") {
-    const service = line.substr(8)
-    connect(service).catch(err => {
-      process.stderr.write(err + '\n')
-      process.exit(-1)
-    })
-  }
-})
+function remote () {
+  const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
+  var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
+  if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
 
-async function connect(service)
-{
-  if (service === 'git-upload-pack') {
-    download()
-  } else if (service === 'git-receive-pack') {
-    if (!privkey) {
-      process.stderr.write('Url not recognized as private key to upload to\n')
-      process.exit(-1)
-    }
-    try {
-      download()
-    } catch(e) {
-      if (! fs.existsSync(mirror_path)) {
-        const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null,2,2], env: {} })
-        if (res.status !== 0) process.exit(res.status)
-        await new Promise((resolve, reject) => {
-          glob(path.join(fork_glob, 'objects', 'pack', '*'), function (er, files) {
-            if (er !== null) {
-              sys.stderr.write(er + '\n')
-              process.exit(-1)
-            }
-            for (let file of files) {
-              try {
-                fs.copyFileSync(file, path.join(mirror_path, 'objects', 'pack', path.basename(file)), fs.constants.COPYFILE_EXCL)
-              } catch(e) {}
-            }
-            resolve()
-          })
-        })
+  const remotename = process.argv[3] ? process.argv[2] : undefined
+  const origurl = remotename ? process.argv[3] : process.argv[2]
+  var url = origurl
+  url = url.replace('bsv://', '')
+  url = url.replace('https://', '')
+  url = url.replace('http://', '')
+  url = url.replace('bico.media/', '')
+
+  const urlparts = url.split('/')
+  const subkey = urlparts.slice(1).join('/')
+  var addr = urlparts[0]
+  var privkey = undefined
+  if (bsv.PrivateKey.isValid(addr)) {
+    privkey = addr
+    addr = bsv.PrivateKey(privkey).toAddress().toString()
+    urlparts[0] = addr
+    url = urlparts.join('/')
+    if (remotename) {
+      if (child_process.spawnSync('git', ['config', '--get', 'remote.' + remotename + '.pushurl']).stdout.length === 0) {
+        child_process.spawnSync('git', ['remote', 'set-url', '--push', remotename, origurl])
+        child_process.spawnSync('git', ['remote', 'set-url', remotename, origurl.replace(privkey, addr)])
       }
     }
-  } else {
-    process.stderr.write('Unsupported service: ' + service + '\n')
-    process.exit(-1)
   }
-  process.stdout.write('\n')
-  const res = child_process.spawnSync(service, [mirror_path], { stdio: 'inherit', cwd: mirror_path })
-  if (res.status !== 0) process.exit(res.status)
-  if (service === 'git-receive-pack') {
-    upload()
-  }
-}
 
-function download()
-{
-  const fetchurl = FETCH_SITE + url
-  var res
-  if (! fs.existsSync(mirror_path))
-  {
-    fs.mkdirSync(mirror_path, {recursive: true})
-    res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null,2,2], env: {GIT_DIR: mirror_path} })
-  } else {
-    res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null,2,2], env: {GIT_DIR: mirror_path} })
-  }
-  if (res.status !== 0) throw new Error("Failed to fetch")
-}
+  const bsv_path = path.join(GIT_DIR, 'bsv', addr)
+  const mirror_path = path.join(bsv_path, 'git.' + crypto.createHash('sha256').update(urlparts.join(path.sep)).digest('hex'))
+  const mirror_path_new = path.join(bsv_path, 'git.new')
 
-async function upload()
-{
-  if (fs.existsSync(mirror_path_new)) {
-    rimraf.sync(mirror_path_new)
+  const lines = readline.createInterface({
+    input: process.stdin
+  })
+
+  lines.on('line', (line) => {
+    if (line === 'capabilities') {
+      process.stdout.write('connect\n\n')
+    } else if (line.substr(0, 8) === 'connect ') {
+      const service = line.substr(8)
+      connect(service).catch(err => {
+        process.stderr.write(err + '\n')
+        process.exit(-1)
+      })
+    }
+  })
+
+  async function connect (service) {
+    if (service === 'git-upload-pack') {
+      download()
+    } else if (service === 'git-receive-pack') {
+      if (!privkey) {
+        process.stderr.write('Url not recognized as private key to upload to\n')
+        process.exit(-1)
+      }
+      try {
+        download()
+      } catch (e) {
+        if (!fs.existsSync(mirror_path)) {
+          const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null, 2, 2], env: {} })
+          if (res.status !== 0) process.exit(res.status)
+          for (const file of glob.sync(path.join(fork_glob, 'objects', 'pack', '*'))) {
+            try {
+              fs.copyFileSync(file, path.join(mirror_path, 'objects', 'pack', path.basename(file)), fs.constants.COPYFILE_EXCL)
+            } catch (e) {}
+          }
+        }
+      }
+    } else {
+      process.stderr.write('Unsupported service: ' + service + '\n')
+      process.exit(-1)
+    }
+    process.stdout.write('\n')
+    const res = child_process.spawnSync(service, [mirror_path], { stdio: 'inherit', cwd: mirror_path })
+    if (res.status !== 0) process.exit(res.status)
+    if (service === 'git-receive-pack') {
+      upload()
+    }
   }
-  child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], {stdio:[null,2,2],env:{}})
-  child_process.spawnSync('git', ['repack'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
-  child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
-  const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: {GIT_DIR: mirror_path_new} }).stdout.toString().replace('\n','')
-  child_process.spawnSync('git', ['tag', url.replace(':','/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: {GIT_DIR: mirror_path_new} })
-  child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null,2,2], env: {GIT_DIR: mirror_path_new} })
-  fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), 'This is a git-remote-bsv D:// web repository.')
-  if (! fs.existsSync( path.join(bsv_path, '.bsv', 'key') ) ) {
-    let bsvupaddr;
-    let bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
-    bsvup.stdin.write(privkey + '\n')
-    bsvupaddr = await new Promise((resolve, reject) => {
-      const rl = readline.createInterface({input: bsvup.stdout})
-      let foundaddr = undefined
-      rl.on('line', (line) => {
-        let m = line.match('onchain address：\(.*\)')
-        if (m) {
+
+  function download () {
+    const fetchurl = FETCH_SITE + url
+    var res
+    if (!fs.existsSync(mirror_path)) {
+      fs.mkdirSync(mirror_path, { recursive: true })
+      res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
+    } else {
+      res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
+    }
+    if (res.status !== 0) throw new Error('Failed to fetch')
+  }
+
+  async function upload () {
+    if (fs.existsSync(mirror_path_new)) {
+      rimraf.sync(mirror_path_new)
+    }
+    child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], { stdio: [null, 2, 2], env: {} })
+    child_process.spawnSync('git', ['repack'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
+    child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
+    const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
+    child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
+    child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
+    fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), 'This is a git-remote-bsv D:// web repository.')
+    if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
+      let bsvupaddr
+      const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
+      bsvup.stdin.write(privkey + '\n')
+      bsvupaddr = await new Promise((resolve, reject) => {
+        const rl = readline.createInterface({ input: bsvup.stdout })
+        let foundaddr
+        rl.on('line', (line) => {
+          const m = line.match('onchain address：\(.*\)')
+          if (m) {
+            process.stderr.write(line + '\n')
+            foundaddr = m[1]
+            rl.close()
+          }
+        })
+        rl.on('close', () => { if (foundaddr) resolve(foundaddr); else reject('bsvup did not give addr') })
+      })
+      await new Promise((resolve, reject) => {
+        bsvup.on('error', reject)
+        bsvup.on('exit', resolve)
+        bsvup.stdout.pipe(process.stderr)
+      })
+      if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
+    }
+    const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
+    try {
+      await new Promise((resolve, reject) => {
+        const rl = readline.createInterface({ input: bsvup.stdout })
+        var success = true
+        rl.on('line', (line) => {
           process.stderr.write(line + '\n')
-          foundaddr = m[1]
-          rl.close()
-        }
+          if (line.match('still need .* satoshis')) {
+            success = false
+            process.stderr.write('Send to ' + addr + '\n')
+            rl.close()
+          }
+        })
+        rl.on('close', () => success ? resolve() : reject())
       })
-      rl.on('close', () => { if (foundaddr) resolve(foundaddr); else reject('bsvup did not give addr'); })
-    })
-    await new Promise((resolve, reject) => {
-      bsvup.on('error', reject)
-      bsvup.on('exit', resolve)
-      bsvup.stdout.pipe(process.stderr)
-    })
-    if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
-  }
-  let bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
-  try {
-    await new Promise((resolve, reject) => {
-      const rl = readline.createInterface({input: bsvup.stdout})
-      var success = true
-      rl.on('line', (line) => {
-        process.stderr.write(line + '\n')
-        if (line.match('still need .* satoshis')) {
-          success = false
-          process.stderr.write('Send to ' + addr + '\n')
-          rl.close()
-        }
-      })
-      rl.on('close', ()=>success?resolve():reject())
-    })
-    // success
-    rimraf.sync(mirror_path)
-    fs.renameSync(mirror_path_new, mirror_path)
-  } catch(e) {
+      // success
+      rimraf.sync(mirror_path)
+      fs.renameSync(mirror_path_new, mirror_path)
+    } catch (e) {
     // failure
-    process.stderr.write(e + '\n')
-    rimraf.sync(mirror_path_new)
-    process.exit(-1)
+      process.stderr.write(e + '\n')
+      rimraf.sync(mirror_path_new)
+      process.exit(-1)
+    }
+  }
+} // from if-else near top of file, separating CLI options
+
+async function findforks () {
+  // find root commit // TODO: all branches?
+  const commits = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD']).stdout.toString().split('\n').filter(cmt => cmt !== '')
+  const sha256s = {}
+
+  // add sha256sums for tags of root commits
+  for (const commit of commits) {
+    sha256s[commit] = crypto.createHash('sha256').update(commit + '\n').digest('hex')
+  }
+
+  // enumerate packfiles to find packfiles containing root commit
+  for (const file of glob.sync(path.join(fork_glob, 'objects', 'pack', '*'))) {
+    const bname = path.basename(file)
+    if (bname in sha256s) continue
+    for (let gitobj of child_process.spawnSync('git', ['verify-pack', '-v', file]).stdout.toString().split('\n')) {
+      gitobj = gitobj.split(' ')
+      if (gitobj[1] !== 'commit') continue
+      if (commits.includes(gitobj[0])) {
+        // this packfile has the root commit in it.
+        // take sha256sum of packfile
+        const hash = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+        sha256s[bname] = hash
+        break
+      }
+    }
+  }
+
+  // lookup B:// addresses of sha256s
+  // make our own query by copying bitdb.js from bsvup
+  // below works better after changing genesis to data
+  const bitdbd = 'https://data.bitdb.network/q/1KuUr2pSJDao97XM8Jsq8zwLS6W1WtFfLg/'
+  const BitDBKey = '1Px8CKdrfJUw7eVrTmVYjYtmtDoxjD6tGt'
+  const fetch = require('node-fetch')
+  const Bquery = {
+    v: 3,
+    q: {
+      find: { },
+      project: {
+        tx: 1
+      }
+    },
+    r: {
+      f: '[ .[] | .tx.h ]'
+    }
+  }
+  let Baddrs = new Set()
+  for (const key in sha256s) {
+    Bquery.q.find.c = sha256s[key]
+    // console.log(JSON.stringify(Bquery))
+    const b64 = Buffer.from(JSON.stringify(Bquery)).toString('base64')
+    const url = bitdbd + b64
+    // console.log(url)
+    const header = { headers: { key: BitDBKey } }
+    let res = await fetch(url, header)
+    res = await res.json()
+    res = res.u.concat(res.c)
+    Baddrs = new Set(res.concat(...Baddrs))
+    // console.log(res) // res is now an array of B:// addresses
+    // console.log(await res.json())
+  }
+  // console.log("B:// addresses containing pack or tag for this repo:")
+  // console.log(Baddrs)
+
+  // lookup D:// addresses of files from B:// addresses
+  const bitdbg = 'https://genesis.bitdb.network/q/1FnauZ9aUH2Bex6JzdcV4eNX7oLSSEbxtN/'
+  const Dquery = {
+    v: 3,
+    q: {
+      find: {
+        'out.s1': '19iG3WTYSsbyos3uJ733yK4zEioi1FesNU',
+        'out.s4': 'b'
+      }
+    },
+    r: {
+      f: '[ .[] | { addr: .in[0].e.a, key: .out[0].s2 } ]'
+    }
+  }
+  let forks = new Set()
+  for (const Baddr of Baddrs) {
+    Dquery.q.find['out.s3'] = Baddr
+    const b64 = Buffer.from(JSON.stringify(Dquery)).toString('base64')
+    const url = bitdbg + b64
+    // console.log(url)
+    const header = { headers: { key: BitDBKey } }
+    let res = await fetch(url, header)
+    res = await res.json()
+    res = res.u.concat(res.c)
+    // console.log(res)
+    // for each path, remove either refs/tags/.*?^ or objects/pack/pack-.*?^
+    res = res.map(x =>
+      ('bsv://' + x.addr + '/' + x.key)
+        .replace(/\/refs\/tags\/[^\/]*$|\/objects\/pack\/pack-[^\/]*$/, '')
+    )
+    forks = new Set(res.concat(...forks))
+  }
+  for (const fork of forks) {
+    console.log(fork)
   }
 }
