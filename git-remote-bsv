@@ -10,6 +10,7 @@ const fs = require('fs')
 const bsv = require('bsv')
 const rimraf = require('rimraf')
 
+const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
 const GIT_DIR = path.resolve(process.env.GIT_DIR || child_process.spawnSync('git', ['rev-parse', '--git-dir']).stdout.toString().replace('\n', ''))
 const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
 
@@ -18,9 +19,12 @@ if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '
   process.stderr.write('Usage (including a new url pair for you; send coins to fetch address):\n')
   process.stderr.write('  git remote add --mirror=push bsv bsv://' + key.toString() + '/path/to/repo.git\n')
   process.stderr.write('  git remote add --mirror=fetch bsv bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
-  process.stderr.write('  git remote-bsv --forks       # list forks of a repo\n')
+  process.stderr.write('  git remote-bsv --forks       # list forks of this repo\n')
+  process.stderr.write('  git remote-bsv --repos       # list repos on blockchain\n')
   process.stderr.write('\n')
   process.exit(0)
+} else if (process.argv.length === 3 && (process.argv[2] === '-r' || process.argv[2] === '--repos')) {
+  findrepos()
 } else if (process.argv.length === 3 && (process.argv[2] === '-f' || process.argv[2] === '--forks')) {
   findforks()
 } else {
@@ -132,7 +136,7 @@ function remote () {
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
     child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
-    fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), 'This is a git-remote-bsv D:// web repository.')
+    fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
     if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
       let bsvupaddr
       const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
@@ -182,7 +186,7 @@ function remote () {
       process.exit(-1)
     }
   }
-} // from if-else near top of file, separating CLI options
+}
 
 async function findforks () {
   // find root commit // TODO: all branches?
@@ -210,7 +214,25 @@ async function findforks () {
       }
     }
   }
+  await findReposWithFiles(sha256s, /\/refs\/tags\/[^\/]*$|\/objects\/pack\/pack-[^\/]*$/)
+}
 
+// finding repos and finding forks are similar, but different files within the repos are keyed upon
+// for forks, we look for any packfiles that contain the root commit, and any tag that points to the root commit
+// for repos, we look for either the 'git-remote-bsv' distinguishing file content, the default 'description' file, or a default hook file (probably 'post-update.sample', the smallest)
+// so, we have a list of contents, and a list of replacements to apply to adjust the paths properly.
+
+async function findrepos()
+{
+  const sha256s = {}
+  sha256s['git-remote-bsv'] = crypto.createHash('sha256').update(DISTINGUISHING_TEXT).digest('hex')
+  sha256s['description'] = crypto.createHash('sha256').update("Unnamed repository; edit this file 'description' to name the repository.\n").digest('hex')
+  sha256s['post-update.sample'] = "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5"
+  await findReposWithFiles(sha256s, /\/hooks\/post-update\.sample$|\/git-remote-bsv$|\/description$/)
+}
+
+async function findReposWithFiles(sha256s, pathregexp)
+{
   // lookup B:// addresses of sha256s
   // make our own query by copying bitdb.js from bsvup
   // below works better after changing genesis to data
@@ -240,9 +262,8 @@ async function findforks () {
     let res = await fetch(url, header)
     res = await res.json()
     res = res.u.concat(res.c)
-    Baddrs = new Set(res.concat(...Baddrs))
     // console.log(res) // res is now an array of B:// addresses
-    // console.log(await res.json())
+    Baddrs = new Set(res.concat(...Baddrs))
   }
   // console.log("B:// addresses containing pack or tag for this repo:")
   // console.log(Baddrs)
@@ -275,7 +296,7 @@ async function findforks () {
     // for each path, remove either refs/tags/.*?^ or objects/pack/pack-.*?^
     res = res.map(x =>
       ('bsv://' + x.addr + '/' + x.key)
-        .replace(/\/refs\/tags\/[^\/]*$|\/objects\/pack\/pack-[^\/]*$/, '')
+        .replace(pathregexp, '')
     )
     forks = new Set(res.concat(...forks))
   }
@@ -283,3 +304,5 @@ async function findforks () {
     console.log(fork)
   }
 }
+
+
