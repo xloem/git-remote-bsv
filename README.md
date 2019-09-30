@@ -19,18 +19,25 @@ The account must have enough coins to upload new changes.
 See help and get a new pair of git remote urls:
 ```sh
 $ git remote-bsv
-Usage (including a new url pair for you; send coins to fetch address):
-  git remote add --mirror=push bsv bsv://L28HP8pJKaqZrffoKcffKf9KHm8vJgHZXXokWYU3wJPNe66Egc8G/path/to/repo.git
-  git remote add --mirror=fetch bsv bsv://1DRp8jsVnHsNLBHWnyfzMqREap17836xK3/path/to/repo.git
-  git remote-bsv --forks       # list forks of this repo
-  git remote-bsv --repos       # list repos on blockchain
+
+New key pair generated in memory.
+
+To make a push remote to the new key pair:
+  git remote add bsv bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
+To make a fetch-only remote to the new key pair:
+  git remote add bsv bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
+To list forks of the current repo:
+  git remote-bsv --forks
+To list repos on the blockchain:
+  git remote-bsv --repos
 
 ```
 
 Import an existing git repository to the BSV blockchain:
 ```sh
 $ cd myrepo
-$ git remote add bsv bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra
+$ echo 'myrepo name' > .git/description
+$ git remote add bsv bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
 $ git push bsv
 # if it fails due to not enough satoshis: send coins to 1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4 and try again
 ```
@@ -38,19 +45,19 @@ $ git push bsv
 Clone a repo off BSV:
 ```
 # without git-remote-bsv installed:
-$ git clone https://bico.media/1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4 myrepo
+$ git clone https://bico.media/1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git myrepo
 
 # with git-remote-bsv installed:
-$ git clone bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4 myrepo
+$ git clone bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git myrepo
 ```
 
 Integrate changes from a BSV mirror:
 ```
 # add remote without git-remote-bsv installed:
-$ git remote add bsv https://bico.media/1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
+$ git remote add bsv https://bico.media/1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
 
 # add remote with git-remote-bsv installed
-$ git remote add bsv bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
+$ git remote add bsv bsv://1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4/path/to/repo.git
 
 # integrate
 $ git pull bsv master

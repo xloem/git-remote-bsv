@@ -18,11 +18,15 @@ const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
 
 if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '--help') {
   const key = bsv.PrivateKey()
-  process.stderr.write('Usage (including a new url pair for you; send coins to fetch address):\n')
-  process.stderr.write('  git remote add --mirror=push bsv bsv://' + key.toString() + '/path/to/repo.git\n')
-  process.stderr.write('  git remote add --mirror=fetch bsv bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
-  process.stderr.write('  git remote-bsv --forks       # list forks of this repo\n')
-  process.stderr.write('  git remote-bsv --repos       # list repos on blockchain\n')
+  process.stderr.write('\nNew key pair generated in memory.\n\n')
+  process.stderr.write('To make a push remote to the new key pair:\n')
+  process.stderr.write('  git remote add bsv bsv://' + key.toString() + '/path/to/repo.git\n')
+  process.stderr.write('To make a fetch-only remote to the new key pair:\n')
+  process.stderr.write('  git remote add bsv bsv://' + key.toAddress().toString() + '/path/to/repo.git\n')
+  process.stderr.write('To list forks of the current repo:\n')
+  process.stderr.write('  git remote-bsv --forks\n')
+  process.stderr.write('To list repos on the blockchain:\n')
+  process.stderr.write('  git remote-bsv --repos\n')
   process.stderr.write('\n')
   process.exit(0)
 } else if (process.argv.length === 3 && (process.argv[2] === '-r' || process.argv[2] === '--repos')) {
