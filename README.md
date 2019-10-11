@@ -21,6 +21,7 @@ See help and get a new pair of git remote urls:
 $ git remote-bsv
 
 New key pair generated in memory.
+  Send coins to: 1Kyrm8Gmyb4fcDesTLoCin63iUJiznCwe4
 
 To make a push remote to the new key pair:
   git remote add bsv bsv://Kxu7rmqc4zRw97KmvrA7mDTkXJt3KrM1UpnTc3TReNvKBm4pUpra/path/to/repo.git
