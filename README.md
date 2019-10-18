@@ -119,17 +119,17 @@ ignore or undo history rewrites automatically.
 
 ## Recovering From Catastrophe
 
-The original repo private key has been misplaced.  The original content is at:
+The original repo private key was lost for a bit.  The original content is at:
 
-    bsv::1K15pHmxCNBBq5NhrZXG8E7xaEV62cizs6
+    bsv://1K15pHmxCNBBq5NhrZXG8E7xaEV62cizs6/git-remote-bsv.git
 
-The new repo is at:
+The newer repo is at:
 
-    bsv::1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL/git-remote-bsv.git
+    bsv://1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL/git-remote-bsv.git
 
-To deter future catastrophe, the new private push address is listed here:
+To deter future catastrophe, the newer private push address is listed here:
 
-    bsv::KzywA1GLJacYP7EBmAa4Pze2vKnTbYCdfcUkJUWuq8sLR6pHoT9h
+    bsv://KzywA1GLJacYP7EBmAa4Pze2vKnTbYCdfcUkJUWuq8sLR6pHoT9h/git-remote-bsv.git
 
 Please do not steal this particular money.
 
