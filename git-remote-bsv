@@ -109,6 +109,8 @@ function remote () {
           }
         }
       }
+      const res = child_process.spawnSync('git', ['config', 'gc.auto', 0], { stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
+      if (res.status !== 0) process.exit(res.status)
     } else {
       process.stderr.write('Unsupported service: ' + service + '\n')
       process.exit(-1)
@@ -138,6 +140,7 @@ function remote () {
       rimraf.sync(mirror_path_new)
     }
     child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], { stdio: [null, 2, 2], env: {} })
+    child_process.spawnSync('git', ['config', 'gc.auto', 0], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['repack'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
@@ -169,26 +172,28 @@ function remote () {
       })
       if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
     }
+    process.stderr.write('Am in this path: ' + bsv_path)
+    throw new Error('About to: bsvup -p Y -b -n upload -s \'' + subkey + '\' -f ' + mirror_path_new)
     const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
     try {
       await new Promise((resolve, reject) => {
         const rl = readline.createInterface({ input: bsvup.stdout })
-        var success = true
+        var error = null
         rl.on('line', (line) => {
           process.stderr.write(line + '\n')
           if (line.match('still need .* satoshis')) {
-            success = false
+            error = new Error('Not enough satoshis')
             process.stderr.write('Send to ' + addr + '\n')
             rl.close()
           }
         })
-        rl.on('close', () => success ? resolve() : reject())
+        rl.on('close', () => error ? reject(error) : resolve())
       })
       // success
       rimraf.sync(mirror_path)
       fs.renameSync(mirror_path_new, mirror_path)
     } catch (e) {
-    // failure
+      // failure
       process.stderr.write(e + '\n')
       rimraf.sync(mirror_path_new)
       process.exit(-1)
