@@ -41,7 +41,7 @@ if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '
 }
 
 function remote () {
-  const BSVUP = path.join(__dirname, 'node_modules', 'bsvup', 'cli.js')
+  const BSVUP = path.join(__dirname, 'node_modules', '.bin', 'bsvup')
 
   const remotename = process.argv[3] ? process.argv[2] : undefined
   const origurl = remotename ? process.argv[3] : process.argv[2]
@@ -148,6 +148,9 @@ function remote () {
     if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
       let bsvupaddr
       const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
+      bsvup.stderr.on('data', (data) => {
+        process.stderr.write(data)
+      })
       bsvup.stdin.write(privkey + '\n')
       bsvupaddr = await new Promise((resolve, reject) => {
         const rl = readline.createInterface({ input: bsvup.stdout })
@@ -171,6 +174,9 @@ function remote () {
     }
     const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
     try {
+      bsvup.stderr.on('data', (data) => {
+        process.stderr.write(data)
+      })
       await new Promise((resolve, reject) => {
         const rl = readline.createInterface({ input: bsvup.stdout })
         var success = true
@@ -182,14 +188,15 @@ function remote () {
             rl.close()
           }
         })
-        rl.on('close', () => success ? resolve() : reject())
+        bsvup.on('exit', (code) => (code === 0 && success) ? resolve() : reject())
       })
       // success
+      process.stderr.write('upload succeeded\n')
       rimraf.sync(mirror_path)
       fs.renameSync(mirror_path_new, mirror_path)
     } catch (e) {
-    // failure
-      process.stderr.write(e + '\n')
+      // failure
+      process.stderr.write('upload failed: ' + e + '\n')
       rimraf.sync(mirror_path_new)
       process.exit(-1)
     }
