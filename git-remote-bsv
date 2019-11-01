@@ -182,12 +182,15 @@ function remote () {
       })
       await new Promise((resolve, reject) => {
         const rl = readline.createInterface({ input: bsvup.stdout })
-        var error = null
+        var error = new Error('Failed to complete')
         rl.on('line', (line) => {
           process.stderr.write(line + '\n')
           if (line.match('still need .* satoshis')) {
             error = new Error('Not enough satoshis')
             process.stderr.write('Send to ' + addr + '\n')
+            rl.close()
+          } else if (line.indexOf('All TX Broadcasted') >= 0) {
+            error = null
             rl.close()
           }
         })
