@@ -7,7 +7,7 @@
   "repository": "git+https://bico.media/1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL",
   "main": "git-remote-bsv",
   "dependencies": {
-    "bsvup": "fuzzyTew/bsvup#debug",
+    "bsvup": "xloem/bsvup#b19d11587a43f87b752017e5b6b7bb9cd21ea05a",
     "glob": "^7.1.4",
     "rimraf": "3.0.0"
   },
