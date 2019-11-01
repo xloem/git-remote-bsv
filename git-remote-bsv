@@ -172,7 +172,7 @@ function remote () {
       })
       if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
     }
-    const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
+    const bsvup = child_process.execFile(BSVUP, ['-v', '-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
     try {
       bsvup.stderr.on('data', (data) => {
         process.stderr.write(data)
