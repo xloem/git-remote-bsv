@@ -148,8 +148,6 @@ function remote () {
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
     fs.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
-    let lightningfs = require('./lightning-superblock')(mirror_path_new)
-    fs.writeFileSync(path.join(mirror_path_new, '.superblock.txt'), lightningfs)
     if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
       let bsvupaddr
       const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
