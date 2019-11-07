@@ -133,6 +133,8 @@ function remote () {
       res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     }
     if (res.status !== 0) throw new Error('Failed to fetch')
+    res = child_process.spawnSync('git', ['config', 'gc.auto', 0], { stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
+    if (res.status !== 0) throw new Error('Failed to disable GC')
   }
 
   async function upload () {
