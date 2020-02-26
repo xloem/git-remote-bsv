@@ -1,6 +1,8 @@
 # git-remote-bsv
 
 A git remote for the Bitcoin Satoshi Vision blockchain.
+The project is currently broken due to changes in the BSV network and dependencies.
+Fixing is in progress.
 
 ## Installation
 Download node at [nodejs.org](http://nodejs.org) and install it, if you haven't already.
