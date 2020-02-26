@@ -8,6 +8,7 @@ const readline = require('readline')
 const fse = require('fs-extra')
 
 const bsv = require('bsv')
+const bsvup = require('bsvup')
 
 var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
 if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
@@ -40,8 +41,6 @@ if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '
 }
 
 function remote () {
-  const BSVUP = path.join(__dirname, 'node_modules', '.bin', 'bsvup')
-
   const remotename = process.argv[3] ? process.argv[2] : undefined
   const origurl = remotename ? process.argv[3] : process.argv[2]
   var url = origurl
@@ -149,60 +148,36 @@ function remote () {
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     fse.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
     fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
-    if (!fse.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
-      let bsvupaddr
-      const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
-      bsvup.stderr.on('data', (data) => {
-        process.stderr.write(data)
-      })
-      bsvup.stdin.write(privkey + '\n')
-      bsvupaddr = await new Promise((resolve, reject) => {
-        const rl = readline.createInterface({ input: bsvup.stdout })
-        let foundaddr
-        rl.on('line', (line) => {
-          const m = line.match('onchain address：\(.*\)')
-          if (m) {
-            process.stderr.write(line + '\n')
-            foundaddr = m[1]
-            rl.close()
-          }
-        })
-        rl.on('close', () => { if (foundaddr) resolve(foundaddr); else reject('bsvup did not give addr') })
-      })
-      await new Promise((resolve, reject) => {
-        bsvup.on('error', reject)
-        bsvup.on('exit', resolve)
-        bsvup.stdout.pipe(process.stderr)
-      })
-      if (bsvupaddr !== addr) throw new Error('bsvup calculated different address')
-    }
-    const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', '-b', '-n', 'upload', '-s', subkey, '-f', mirror_path_new], { cwd: bsv_path })
+    console.log = text=>process.stderr.write(`${text}\n`)
+    let cwd = process.cwd()
+    process.chdir(bsv_path)
+    //bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
+    bsvup.cache.initCache()
     try {
-      bsvup.stderr.on('data', (data) => {
-        process.stderr.write(data)
+      let tasks = await bsvup.logic.prepareUpload(mirror_path_new, bsv.PrivateKey(privkey), null, subkey)
+      tasks.filter(task => task.type === 'D').forEach(task => {
+        process.stderr.write(` https://bico.media/${addr}/${task.out.key}\n`)
       })
-      await new Promise((resolve, reject) => {
-        const rl = readline.createInterface({ input: bsvup.stdout })
-        var error = new Error('Failed to complete')
-        rl.on('line', (line) => {
-          process.stderr.write(line + '\n')
-          if (line.match('still need .* satoshis')) {
-            error = new Error('Not enough satoshis')
-            process.stderr.write('Send to ' + addr + '\n')
-            rl.close()
-          } else if (line.indexOf('All TX Broadcasted') >= 0) {
-            error = null
-            rl.close()
-          }
-        })
-        bsvup.on('exit', (code) => (error || code) ? reject(error || code) : resolve())
-      })
+      let txs = bsvup.logic.getTXs(tasks)
+      if (txs.length === 0) throw new Error(`No changes to upload.  If this is an obscure error, you could try wiping ${mirror_path}`)
+      bsvup.cache.saveUnbroadcast(txs)
+      while (true) {
+        process.stderr.write(`Broadcasting ${txs.length} transactions ...`)
+        txs = await bsvup.api.tryBroadcastAll()
+        if (!txs.length) { break }
+        process.stderr.write(`Not all transactions broadcast. ${txs.length} are cached and will be rebroadcast in 120s.`)
+        await new Promise(resolve => setTimeout(resolve, 120000))
+      }
+
       // success
       process.stderr.write('upload succeeded\n')
       fse.removeSync(mirror_path)
       fse.renameSync(mirror_path_new, mirror_path)
-    } catch (e) {
+    } catch(e) {
       // failure
+      if (e === 'Insuffient satoshis.') {
+         process.stderr.write('Send to ' + addr + '\n')
+      }
       process.stderr.write('upload failed: ' + e + '\n')
       fse.removeSync(mirror_path_new)
       process.exit(-1)
