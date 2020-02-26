@@ -7,6 +7,7 @@ const path = require('path')
 const readline = require('readline')
 const fse = require('fs-extra')
 
+const bitfilesdownload = require('bitfiles/download')
 const bsv = require('bsv')
 const bsvup = require('bsvup')
 
@@ -48,6 +49,8 @@ function remote () {
   url = url.replace('https://', '')
   url = url.replace('http://', '')
   url = url.replace('bico.media/', '')
+  url = url + '/'
+  url = url.replace(/\/\/+/g, '/')
 
   const urlparts = url.split('/')
   const subkey = urlparts.slice(1).join('/')
@@ -87,15 +90,16 @@ function remote () {
   })
 
   async function connect (service) {
+    console.log = text=>process.stderr.write(`${text}\n`)
     if (service === 'git-upload-pack') {
-      download()
+      await download()
     } else if (service === 'git-receive-pack') {
       if (!privkey) {
         process.stderr.write('Url not recognized as private key to upload to\n')
         process.exit(-1)
       }
       try {
-        download()
+        await download()
       } catch (e) {
         if (!fse.existsSync(mirror_path)) {
           const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null, 2, 2], env: {} })
@@ -117,20 +121,26 @@ function remote () {
     const res = child_process.spawnSync(service, [mirror_path], { stdio: 'inherit', cwd: mirror_path })
     if (res.status !== 0) process.exit(res.status)
     if (service === 'git-receive-pack') {
-      upload()
+      await upload()
     }
   }
 
-  function download () {
+  async function download () {
     const fetchurl = FETCH_SITE + url
     var res
-    if (!fse.existsSync(mirror_path)) {
+    if (!fse.existsSync(path.join(mirror_path, 'HEAD'))) {
       fse.ensureDirSync(mirror_path)
       res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     } else {
       res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     }
-    if (res.status !== 0) throw new Error('Failed to fetch')
+    //if (res.status !== 0) throw new Error('Failed to fetch')
+    process.chdir(mirror_path)
+    await bitfilesdownload.ddownload(addr, subkey + 'objects')
+    await bitfilesdownload.ddownload(addr, subkey + 'info')
+    await bitfilesdownload.ddownload(addr, subkey + 'refs')
+    await bitfilesdownload.ddownload(addr, subkey + 'HEAD')
+    await bitfilesdownload.ddownload(addr, subkey + 'packed-refs')
     res = child_process.spawnSync('git', ['config', 'gc.auto', 0], { stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     if (res.status !== 0) throw new Error('Failed to disable GC')
   }
@@ -148,7 +158,6 @@ function remote () {
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     fse.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
     fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
-    console.log = text=>process.stderr.write(`${text}\n`)
     let cwd = process.cwd()
     process.chdir(bsv_path)
     //bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
