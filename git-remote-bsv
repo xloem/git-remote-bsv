@@ -154,8 +154,14 @@ function remote () {
     //bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
     bsvup.cache.initCache()
     try {
+      let utxos = await bsvup.api.getUTXOs(addr)
+      let starting_satoshis = utxos.reduce((totalProvided, utxo) => totalProvided += utxo.amount ? Math.round(utxo.amount * 1e8) : utxo.satoshis, 0)
+      process.stderr.write(`${addr} wallet balance: ${starting_satoshis} satoshis\n`)
       let tasks = await bsvup.logic.prepareUpload(mirror_path_new, bsv.PrivateKey(privkey), null, subkey)
       if (tasks.length === 0) throw new Error(`No changes to upload.  If this is an obscure error, you could try wiping ${mirror_path}`)
+      let price_satoshis = tasks.reduce((totalRequired, task) => totalRequired += Math.max(bsvup.txUtil.parameters.DUST_LIMIT, task.satoshis + Math.ceil(178*250/1000)), 0)
+      process.stderr.write(`Upload price: ${price_satoshis} satoshis\n`)
+      process.stderr.write(`Balance after upload: ${starting_satoshis - price_satoshis} satoshis\n`)
       process.stderr.write(`Uploading these files:\n`)
       tasks.filter(task => task.type === 'D').forEach(task => {
         process.stderr.write(` https://bico.media/${addr}/${task.out.key}\n`)
