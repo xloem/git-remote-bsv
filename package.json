@@ -7,10 +7,11 @@
   "repository": "git+https://bico.media/1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL",
   "main": "git-remote-bsv",
   "dependencies": {
+    "bsv": "latest",
+    "bsvup": "github:xloem/bsvup#paramsadjust4",
     "fs-extra": "^8.1.0",
     "glob": "^7.1.4"
   },
-  "devDependencies": {},
   "scripts": {},
   "author": "",
   "license": "Public Domain"
