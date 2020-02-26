@@ -5,10 +5,9 @@ const crypto = require('crypto')
 const glob = require('glob')
 const path = require('path')
 const readline = require('readline')
-const fs = require('fs')
+const fse = require('fs-extra')
 
 const bsv = require('bsv')
-const rimraf = require('rimraf')
 
 var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
 if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
@@ -99,12 +98,12 @@ function remote () {
       try {
         download()
       } catch (e) {
-        if (!fs.existsSync(mirror_path)) {
+        if (!fse.existsSync(mirror_path)) {
           const res = child_process.spawnSync('git', ['init', '--bare', mirror_path], { stdio: [null, 2, 2], env: {} })
           if (res.status !== 0) process.exit(res.status)
           for (const file of glob.sync(path.join(fork_glob, 'objects', 'pack', '*'))) {
             try {
-              fs.copyFileSync(file, path.join(mirror_path, 'objects', 'pack', path.basename(file)), fs.constants.COPYFILE_EXCL)
+              fse.copyFileSync(file, path.join(mirror_path, 'objects', 'pack', path.basename(file)), fse.constants.COPYFILE_EXCL)
             } catch (e) {}
           }
         }
@@ -126,8 +125,8 @@ function remote () {
   function download () {
     const fetchurl = FETCH_SITE + url
     var res
-    if (!fs.existsSync(mirror_path)) {
-      fs.mkdirSync(mirror_path, { recursive: true })
+    if (!fse.existsSync(mirror_path)) {
+      fse.mkdirSync(mirror_path, { recursive: true })
       res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     } else {
       res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
@@ -138,8 +137,8 @@ function remote () {
   }
 
   async function upload () {
-    if (fs.existsSync(mirror_path_new)) {
-      rimraf.sync(mirror_path_new)
+    if (fse.existsSync(mirror_path_new)) {
+      fse.removeSync(mirror_path_new)
     }
     child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], { stdio: [null, 2, 2], env: {} })
     child_process.spawnSync('git', ['config', 'gc.auto', 0], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
@@ -148,9 +147,9 @@ function remote () {
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
     child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
-    fs.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
-    fs.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
-    if (!fs.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
+    fse.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
+    fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
+    if (!fse.existsSync(path.join(bsv_path, '.bsv', 'key'))) {
       let bsvupaddr
       const bsvup = child_process.execFile(BSVUP, ['-p', 'Y', 'init'], { cwd: bsv_path })
       bsvup.stderr.on('data', (data) => {
@@ -200,12 +199,12 @@ function remote () {
       })
       // success
       process.stderr.write('upload succeeded\n')
-      rimraf.sync(mirror_path)
-      fs.renameSync(mirror_path_new, mirror_path)
+      fse.removeSync(mirror_path)
+      fse.renameSync(mirror_path_new, mirror_path)
     } catch (e) {
       // failure
       process.stderr.write('upload failed: ' + e + '\n')
-      rimraf.sync(mirror_path_new)
+      fse.removeSync(mirror_path_new)
       process.exit(-1)
     }
   }
@@ -231,7 +230,7 @@ async function findforks () {
       if (commits.includes(gitobj[0])) {
         // this packfile has the root commit in it.
         // take sha256sum of packfile
-        const hash = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+        const hash = crypto.createHash('sha256').update(fse.readFileSync(file)).digest('hex')
         sha256s[bname] = hash
         break
       }

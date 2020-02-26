@@ -8,8 +8,8 @@
   "main": "git-remote-bsv",
   "dependencies": {
     "bsvup": "^1.4.3",
-    "glob": "^7.1.4",
-    "rimraf": "3.0.0"
+    "fs-extra": "^8.1.0",
+    "glob": "^7.1.4"
   },
   "devDependencies": {},
   "scripts": {},
