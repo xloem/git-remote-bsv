@@ -141,7 +141,7 @@ function remote () {
     }
     child_process.spawnSync('git', ['clone', '--mirror', '--bare', mirror_path, mirror_path_new], { stdio: [null, 2, 2], env: {} })
     child_process.spawnSync('git', ['config', 'gc.auto', 0], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
-    child_process.spawnSync('git', ['repack'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
+    child_process.spawnSync('git', ['pack-objects', '--all', '--include-tag', '--unpacked', '--incremental', '--non-empty', '--local', '--progress', '--compression=9', '--delta-base-offset', '--pack-loose-unreachable', 'objects/pack/pack'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
     child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
