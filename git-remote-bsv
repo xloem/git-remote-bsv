@@ -163,10 +163,10 @@ function remote () {
       let txs = bsvup.logic.getTXs(tasks)
       bsvup.cache.saveUnbroadcast(txs)
       while (true) {
-        process.stderr.write(`Broadcasting ${txs.length} transactions ...`)
+        process.stderr.write(`Broadcasting ${txs.length} transactions ...\n`)
         txs = await bsvup.api.tryBroadcastAll()
         if (!txs.length) { break }
-        process.stderr.write(`Not all transactions broadcast. ${txs.length} are cached and will be rebroadcast in 120s.`)
+        process.stderr.write(`Not all transactions broadcast. ${txs.length} are cached and will be rebroadcast in 120s.\n`)
         await new Promise(resolve => setTimeout(resolve, 120000))
       }
 
