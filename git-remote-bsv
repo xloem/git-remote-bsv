@@ -155,11 +155,12 @@ function remote () {
     bsvup.cache.initCache()
     try {
       let tasks = await bsvup.logic.prepareUpload(mirror_path_new, bsv.PrivateKey(privkey), null, subkey)
+      if (tasks.length === 0) throw new Error(`No changes to upload.  If this is an obscure error, you could try wiping ${mirror_path}`)
+      process.stderr.write(`Uploading these files:\n`)
       tasks.filter(task => task.type === 'D').forEach(task => {
         process.stderr.write(` https://bico.media/${addr}/${task.out.key}\n`)
       })
       let txs = bsvup.logic.getTXs(tasks)
-      if (txs.length === 0) throw new Error(`No changes to upload.  If this is an obscure error, you could try wiping ${mirror_path}`)
       bsvup.cache.saveUnbroadcast(txs)
       while (true) {
         process.stderr.write(`Broadcasting ${txs.length} transactions ...`)
