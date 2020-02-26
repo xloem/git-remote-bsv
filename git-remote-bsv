@@ -126,7 +126,7 @@ function remote () {
     const fetchurl = FETCH_SITE + url
     var res
     if (!fse.existsSync(mirror_path)) {
-      fse.mkdirSync(mirror_path, { recursive: true })
+      fse.ensureDirSync(mirror_path)
       res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     } else {
       res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
