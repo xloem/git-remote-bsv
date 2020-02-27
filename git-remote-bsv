@@ -191,7 +191,7 @@ function remote () {
       fse.renameSync(mirror_path_new, mirror_path)
     } catch(e) {
       // failure
-      if (e === 'Insuffient satoshis.') {
+      if (e.message === 'Insuffient satoshis.') {
          process.stderr.write('Send to ' + addr + '\n')
       }
       process.stderr.write('upload failed: ' + e + '\n')
