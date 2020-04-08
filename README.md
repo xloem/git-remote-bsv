@@ -117,6 +117,11 @@ of bsvup and bico.media, to something simpler that retains the concept of an app
 log.  Integrating the protocol into the client could also provide for the client to
 ignore or undo history rewrites automatically.
 
+## See Also
+
+- https://github.com/xloem/bitfiles provides for exporting D history in a format readable by git, which could be used to make the 3rd integrity concern moot
+- https://github.com/xloem/js-gitview has some initial work on making a javascript git repository viewer, which could run on a blockchain
+
 ## Recovering From Catastrophe
 
 The original repo private key was lost for a bit.  The original content is at:
