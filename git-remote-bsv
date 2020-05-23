@@ -7,7 +7,7 @@ const path = require('path')
 const readline = require('readline')
 const fse = require('fs-extra')
 
-const bitfilesdownload = require('bitfiles/download')
+const bitfiles = require('bitfiles')
 const bsv = require('bsv')
 const bsvup = require('bsvup')
 
@@ -136,11 +136,11 @@ function remote () {
     }
     //if (res.status !== 0) throw new Error('Failed to fetch')
     process.chdir(mirror_path)
-    await bitfilesdownload.ddownload(addr, subkey + 'objects')
-    await bitfilesdownload.ddownload(addr, subkey + 'info')
-    await bitfilesdownload.ddownload(addr, subkey + 'refs')
-    await bitfilesdownload.ddownload(addr, subkey + 'HEAD')
-    await bitfilesdownload.ddownload(addr, subkey + 'packed-refs')
+    await bitfiles.ddownload(addr, subkey + 'objects')
+    await bitfiles.ddownload(addr, subkey + 'info')
+    await bitfiles.ddownload(addr, subkey + 'refs')
+    await bitfiles.ddownload(addr, subkey + 'HEAD')
+    await bitfiles.ddownload(addr, subkey + 'packed-refs')
     res = child_process.spawnSync('git', ['config', 'gc.auto', 0], { stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     if (res.status !== 0) throw new Error('Failed to disable GC')
   }
