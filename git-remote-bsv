@@ -11,8 +11,6 @@ const bitfiles = require('bitfiles')
 const bsv = require('bsv')
 const bsvup = require('bsvup')
 
-var FETCH_SITE = (process.env.BSV_GATEWAY || 'https://bico.media').replace('://', '::') // '::' instead of '://' informs git the server has no git cgi
-if (FETCH_SITE.slice(-1) !== '/') FETCH_SITE += '/'
 const GIT_DIR = path.resolve(process.env.GIT_DIR || child_process.spawnSync('git', ['rev-parse', '--git-dir']).stdout.toString().replace('\n', ''))
 const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
 const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
@@ -126,16 +124,10 @@ function remote () {
   }
 
   async function download () {
-    const fetchurl = FETCH_SITE + url
-    var res
-    if (!fse.existsSync(path.join(mirror_path, 'HEAD'))) {
-      fse.ensureDirSync(mirror_path)
-      res = child_process.spawnSync('git', ['clone', '--bare', '--mirror', fetchurl, mirror_path], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
-    } else {
-      res = child_process.spawnSync('git', ['fetch', '--tags', fetchurl, '+refs/*:refs/*'], { cwd: mirror_path, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
-    }
-    //if (res.status !== 0) throw new Error('Failed to fetch')
-    process.chdir(mirror_path)
+    fse.ensureDirSync(mirror_path)
+    process.chdir(mirror_path + '/refs')
+    await bitfiles.ddownload(addr, subkey + 'description')
+    await bitfiles.ddownload(addr, subkey + 'config')
     await bitfiles.ddownload(addr, subkey + 'objects')
     await bitfiles.ddownload(addr, subkey + 'info')
     await bitfiles.ddownload(addr, subkey + 'refs')
@@ -309,12 +301,15 @@ async function findReposWithFiles(sha256s, pathregexp)
     forks = new Set(res.concat(...forks))
   }
   for (const fork of forks) {
-    const descrurl = FETCH_SITE.replace('::','://') + fork + '/description'
-    let descr = await fetch(descrurl)
-    if (descr.ok) {
-      descr = await descr.text()
+    let parts = fork.split('/')
+    let addr = parts.shift()
+    let subkey = parts.join('/')
+    let descr
+    try {
+      descr = await bitfiles.d(addr, subkey + '/description')
+      descr = descr.toString()
       descr = descr.replace(/\n.*$/,'')
-    } else {
+    } catch (exception) {
       descr = '<failed to fetch GIT_DIR/description>'
     }
     console.log('bsv://' + fork + '\t' + descr)
