@@ -1,13 +1,13 @@
 {
   "name": "git-remote-bsv",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "bin": "git-remote-bsv",
   "description": "code-on-blockchain: intro handlers for bsv://pubkey and bsv://privkey git remote urls",
   "homepage": "https://github.com/fuzzyTew/git-remote-bsv",
   "repository": "git+https://bico.media/1FJMa1Ac53zoKg2UrQEnafNqUFSvNRhmaL",
   "main": "git-remote-bsv",
   "dependencies": {
-    "bitfiles": "^1.0.4",
+    "bitfiles": "^1.2.2",
     "bsv": "latest",
     "bsvup": "github:xloem/bsvup#paramsadjust4",
     "fs-extra": "^8.1.0",
