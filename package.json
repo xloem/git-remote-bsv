@@ -1,6 +1,6 @@
 {
   "name": "git-remote-bsv",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "bin": "git-remote-bsv",
   "description": "code-on-blockchain: intro handlers for bsv://pubkey and bsv://privkey git remote urls",
   "homepage": "https://github.com/fuzzyTew/git-remote-bsv",

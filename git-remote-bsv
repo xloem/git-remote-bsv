@@ -124,8 +124,7 @@ function remote () {
   }
 
   async function download () {
-    fse.ensureDirSync(mirror_path)
-    process.chdir(mirror_path + '/refs')
+    process.chdir(mirror_path)
     await bitfiles.ddownload(addr, subkey + 'description')
     await bitfiles.ddownload(addr, subkey + 'config')
     await bitfiles.ddownload(addr, subkey + 'objects')
@@ -135,6 +134,7 @@ function remote () {
     await bitfiles.ddownload(addr, subkey + 'packed-refs')
     res = child_process.spawnSync('git', ['config', 'gc.auto', 0], { stdio: [null, 2, 2], env: { GIT_DIR: mirror_path } })
     if (res.status !== 0) throw new Error('Failed to disable GC')
+    fse.ensureDirSync(mirror_path + '/refs')
   }
 
   async function upload () {
