@@ -2,6 +2,8 @@
 
 A git remote for the Bitcoin Satoshi Vision blockchain.
 
+This works, but is obviously slapped together out of confusion and need.  Please hack it up to be right.
+
 ## Installation
 Download node at [nodejs.org](http://nodejs.org) and install it, if you haven't already.
 
