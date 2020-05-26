@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// TODO: FIX HIGH FEE.  network supports down to 250 but the server used by bsvup may not support that.
+feePerKb = 500
+
 const child_process = require('child_process')
 const crypto = require('crypto')
 const glob = require('glob')
@@ -152,13 +155,13 @@ function remote () {
     fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
     let cwd = process.cwd()
     process.chdir(bsv_path)
-    //bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
+    bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
     bsvup.cache.initCache()
     try {
       let utxos = await bsvup.api.getUTXOs(addr)
       let starting_satoshis = utxos.reduce((totalProvided, utxo) => totalProvided += utxo.amount ? Math.round(utxo.amount * 1e8) : utxo.satoshis, 0)
       process.stderr.write(`${addr} wallet balance: ${starting_satoshis} satoshis\n`)
-      let tasks = await bsvup.logic.prepareUpload(mirror_path_new, bsv.PrivateKey(privkey), null, subkey)
+      let tasks = await bsvup.logic.prepareUpload(mirror_path_new, bsv.PrivateKey(privkey), null, subkey, feePerKb)
       if (tasks.length === 0) throw new Error(`No changes to upload.  If this is an obscure error, you could try wiping ${mirror_path}`)
       let price_satoshis = tasks.reduce((totalRequired, task) => totalRequired += Math.max(bsvup.txUtil.parameters.DUST_LIMIT, task.satoshis + Math.ceil(178*250/1000)), 0)
       process.stderr.write(`Upload price: ${price_satoshis} satoshis\n`)
