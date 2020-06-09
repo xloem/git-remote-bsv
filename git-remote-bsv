@@ -17,6 +17,7 @@ const bsvup = require('bsvup')
 const GIT_DIR = path.resolve(process.env.GIT_DIR || child_process.spawnSync('git', ['rev-parse', '--git-dir']).stdout.toString().replace('\n', ''))
 const fork_glob = path.join(GIT_DIR, 'bsv', '*', 'git.*')
 const DISTINGUISHING_TEXT = 'This is a git-remote-bsv D:// web repository.'
+const DEFAULT_DESCRIPTION = 'Unnamed repository; edit this file \'description\' to name the repository.\n'
 
 if (process.argv.length < 3 || process.argv[2] === '-h' || process.argv[2] === '--help') {
   const key = bsv.PrivateKey()
@@ -131,7 +132,7 @@ function remote () {
     process.chdir(mirror_path)
     await bitfiles.ddownload(addr, subkey + 'description')
     await bitfiles.ddownload(addr, subkey + 'config')
-    await bitfiles.ddownload(addr, subkey + 'objects')
+    await bitfiles.ddownload(addr, subkey + 'objects', true, true)
     await bitfiles.ddownload(addr, subkey + 'info')
     await bitfiles.ddownload(addr, subkey + 'refs')
     await bitfiles.ddownload(addr, subkey + 'HEAD')
@@ -141,6 +142,11 @@ function remote () {
     if (res.status !== 0) {
       fse.removeSync(mirror_path + '/refs')
       throw new Error('Failed to disable GC')
+    }
+    if (fse.existsSync(path.join(mirror_path, 'description'))) {
+      if (!fse.existsSync(path.join(GIT_DIR, 'description')) || fse.readFileSync(path.join(GIT_DIR, 'description')) == DEFAULT_DESCRIPTION) {
+        fse.copyFileSync(path.join(mirror_path, 'description'), path.join(GIT_DIR, 'description'))
+      }
     }
   }
 
@@ -153,10 +159,12 @@ function remote () {
     child_process.spawnSync('git', ['pack-objects', '--all', '--include-tag', '--unpacked', '--incremental', '--non-empty', '--local', '--progress', '--compression=9', '--delta-base-offset', '--pack-loose-unreachable', 'objects/pack/pack'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     child_process.spawnSync('git', ['prune-packed'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     const first_commit = child_process.spawnSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }).stdout.toString().replace('\n', '')
-    child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } })
+    child_process.spawnSync('git', ['tag', url.replace(':', '/').replace(/\/\/*/, '/'), first_commit], { cwd: mirror_path_new, env: { GIT_DIR: mirror_path_new } }) //*///<- comment-termination fixes syntax hilighting on some editors, due to /* appearing in line
     child_process.spawnSync('git', ['update-server-info'], { cwd: mirror_path_new, stdio: [null, 2, 2], env: { GIT_DIR: mirror_path_new } })
     fse.writeFileSync(path.join(mirror_path_new, 'git-remote-bsv'), DISTINGUISHING_TEXT)
-    fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
+    if (!fse.existsSync(path.join(mirror_path, 'description')) || fse.readFileSync(path.join(GIT_DIR, 'description')) != DEFAULT_DESCRIPTION) {
+      fse.copyFileSync(path.join(GIT_DIR, 'description'), path.join(mirror_path_new, 'description'))
+    }
     let cwd = process.cwd()
     process.chdir(bsv_path)
     bsvup.api.setLogLevel(bsvup.api.logLevel.INFO)
@@ -207,7 +215,10 @@ async function findforks () {
 
   // add sha256sums for tags of root commits
   for (const commit of commits) {
-    sha256s[commit] = crypto.createHash('sha256').update(commit + '\n').digest('hex')
+    sha256s[commit] = {
+      content: commit + '\n',
+      sha256: crypto.createHash('sha256').update(commit + '\n').digest('hex')
+    }
   }
 
   // enumerate packfiles to find packfiles containing root commit
@@ -220,78 +231,118 @@ async function findforks () {
       if (commits.includes(gitobj[0])) {
         // this packfile has the root commit in it.
         // take sha256sum of packfile
-        const hash = crypto.createHash('sha256').update(fse.readFileSync(file)).digest('hex')
-        sha256s[bname] = hash
+        const content = fse.readFileSync(file)
+        const hash = crypto.createHash('sha256').update(content).digest('hex')
+        sha256s[bname] = {
+          content: content.length <= 512 ? content : undefined,
+          sha256: hash
+        }
         break
       }
     }
   }
-  await findReposWithFiles(sha256s, /\/refs\/tags\/[^\/]*$|\/objects\/pack\/pack-[^\/]*$/)
+  await findReposWithFiles(sha256s, /\/refs\/tags\/.*$|\/objects\/pack\/pack-[^\/]*$/)
 }
 
 async function findrepos()
 {
   const sha256s = {}
-  sha256s['git-remote-bsv'] = crypto.createHash('sha256').update(DISTINGUISHING_TEXT).digest('hex')
-  sha256s['description'] = crypto.createHash('sha256').update("Unnamed repository; edit this file 'description' to name the repository.\n").digest('hex')
-  sha256s['post-update.sample'] = "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5"
+  sha256s['git-remote-bsv'] = {
+    content: DISTINGUISHING_TEXT,
+    sha256: crypto.createHash('sha256').update(DISTINGUISHING_TEXT).digest('hex')
+  }
+  sha256s['description'] = {
+    content: DEFAULT_DESCRIPTION,
+    sha256: crypto.createHash('sha256').update(DEFAULT_DESCRIPTION).digest('hex')
+  }
+  sha256s['post-update.sample'] = {
+    content: '#!/bin/sh\n#\n# An example hook script to prepare a packed repository for use over\n# dumb transports.\n#\n# To enable this hook, rename this file to "post-update".\n\nexec git update-server-info\n',
+    sha256: "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5"
+  }
   await findReposWithFiles(sha256s, /\/hooks\/post-update\.sample$|\/git-remote-bsv$|\/description$/)
 }
 
 async function findReposWithFiles(sha256s, pathregexp)
 {
+  // this was hacked together quickly by copying from bsvup, bitfiles, bsv atlantis chat
+  
   // lookup B:// addresses of sha256s
-  // make our own query by copying bitdb.js from bsvup
-  // below works better after changing genesis to data
-  const bitdbd = 'https://data.bitdb.network/q/1KuUr2pSJDao97XM8Jsq8zwLS6W1WtFfLg/'
-  const BitDBKey = '1Px8CKdrfJUw7eVrTmVYjYtmtDoxjD6tGt'
+  // uses ctxt.planaria.network
+  const ctxt = 'https://ctxt.planaria.network/txt/'
+  const limit = 100
+  const cparams = '/json?limit=' + limit + '&offset='
   const fetch = require('node-fetch')
-  const Bquery = {
-    v: 3,
-    q: {
-      find: { },
-      project: {
-        tx: 1
-      }
-    },
-    r: {
-      f: '[ .[] | .tx.h ]'
-    }
-  }
   let Baddrs = new Set()
   for (const key in sha256s) {
-    Bquery.q.find.c = sha256s[key]
-    // console.log(JSON.stringify(Bquery))
-    const b64 = Buffer.from(JSON.stringify(Bquery)).toString('base64')
-    const url = bitdbd + b64
-    // console.log(url)
-    const header = { headers: { key: BitDBKey } }
-    let res = await fetch(url, header)
-    res = await res.json()
-    res = res.u.concat(res.c)
-    // console.log(res) // res is now an array of B:// addresses
-    Baddrs = new Set(res.concat(...Baddrs))
+    offset = 0
+    while (true) {
+      const url = ctxt + sha256s[key].sha256 + cparams + offset
+      // console.log(url)
+      let res = await fetch(url)
+      res = await res.json()
+      res = res.result.map(x => x.tx_id)
+      // console.log(res) // res is now an array of B:// addresses
+      Baddrs = new Set(res.concat(...Baddrs))
+      if (res.length < limit) { break; }
+    }
   }
   // console.log("B:// addresses containing pack or tag for this repo:")
   // console.log(Baddrs)
 
-  // lookup D:// addresses of files from B:// addresses
+  // lookup B:// addresses of small files from their content directly as ctxt uses bitfs which only indexes above 512 bytes
+  const BitDBKey = '1Px8CKdrfJUw7eVrTmVYjYtmtDoxjD6tGt'
   const bitdbg = 'https://genesis.bitdb.network/q/1FnauZ9aUH2Bex6JzdcV4eNX7oLSSEbxtN/'
+  const Bquery = {
+    v: 3,
+    q: {
+      find: {
+        '$or': [
+          { 'out.s1': '19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut' },
+          { 'out.s2': '19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut' }
+        ]
+      },
+      project: {
+        tx: 1
+      }
+    }
+  }
+  for (const key in sha256s) {
+    let content = sha256s[key].content
+    if (!content || content.length > 512) {
+      delete sha256s[key].content
+      continue
+    }
+    Bquery.q.find['$or'][0]['out.s2'] = content
+    Bquery.q.find['$or'][1]['out.s3'] = content
+    const b64 = Buffer.from(JSON.stringify(Bquery)).toString('base64')
+    const url = bitdbg + b64
+    const header = { headers: { key: BitDBKey } }
+    let res = await fetch(url, header)
+    res = await res.json()
+    res = res.u.concat(res.c).map(entry => entry.tx.h)
+    Baddrs = new Set(res.concat(...Baddrs))
+  }
+  // lookup D:// addresses of files from B:// addresses
   const Dquery = {
     v: 3,
     q: {
       find: {
-        'out.s1': '19iG3WTYSsbyos3uJ733yK4zEioi1FesNU',
-        'out.s4': 'b'
+        '$or': [
+          {
+            'out.s1': '19iG3WTYSsbyos3uJ733yK4zEioi1FesNU',
+            'out.s4': 'b'
+          }, {
+            'out.s2': '19iG3WTYSsbyos3uJ733yK4zEioi1FesNU',
+            'out.s5': 'b'
+          }
+        ]
       }
-    },
-    r: {
-      f: '[ .[] | { addr: .in[0].e.a, key: .out[0].s2 } ]'
     }
   }
   let forks = new Set()
   for (const Baddr of Baddrs) {
-    Dquery.q.find['out.s3'] = Baddr
+    Dquery.q.find['$or'][0]['out.s3'] = Baddr
+    Dquery.q.find['$or'][1]['out.s4'] = Baddr
     const b64 = Buffer.from(JSON.stringify(Dquery)).toString('base64')
     const url = bitdbg + b64
     // console.log(url)
@@ -301,10 +352,11 @@ async function findReposWithFiles(sha256s, pathregexp)
     res = res.u.concat(res.c)
     // console.log(res)
     // for each path, remove either refs/tags/.*?^ or objects/pack/pack-.*?^
-    res = res.map(x =>
-      (x.addr + '/' + x.key)
-        .replace(pathregexp, '')
-    )
+    res = res.map(x => {
+      const key = x.out[0].s1 ? x.out[0].s2 : x.out[0].s3
+      const path = x.in[0].e.a + '/' + key
+      return path.replace(pathregexp, '')
+    })
     forks = new Set(res.concat(...forks))
   }
   for (const fork of forks) {
@@ -313,7 +365,7 @@ async function findReposWithFiles(sha256s, pathregexp)
     let subkey = parts.join('/')
     let descr
     try {
-      descr = await bitfiles.d(addr, subkey + '/description')
+      descr = await bitfiles.d(addr, subkey ? subkey + '/description' : 'description')
       descr = descr.toString()
       descr = descr.replace(/\n.*$/,'')
     } catch (exception) {
